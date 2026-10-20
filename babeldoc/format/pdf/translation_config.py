@@ -4,10 +4,12 @@ import shutil
 import tempfile
 import threading
 from collections import Counter
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
 from babeldoc.const import CACHE_FOLDER
+from babeldoc.format.pdf.document_il import il_version_1
 from babeldoc.format.pdf.split_manager import BaseSplitStrategy
 from babeldoc.format.pdf.split_manager import PageCountStrategy
 from babeldoc.glossary import Glossary
@@ -217,7 +219,19 @@ class TranslationConfig:
         metadata_extra_data: str | None = None,
         term_pool_max_workers: int | None = None,
         disable_same_text_fallback: bool = False,
+        document_translator: Callable[
+            [il_version_1.Document, "TranslationConfig"], None
+        ]
+        | None = None,
     ):
+        if document_translator is not None and (
+            skip_translation or auto_extract_glossary or split_strategy is not None
+        ):
+            raise ValueError(
+                "document_translator requires translation enabled, automatic glossary "
+                "extraction disabled, and no page splitting",
+            )
+        self.document_translator = document_translator
         self.translator = translator
         self.term_extraction_translator = term_extraction_translator or translator
         initial_user_glossaries = list(glossaries) if glossaries else []

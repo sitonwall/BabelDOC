@@ -1,3 +1,5 @@
+> **Maintained downstream branch:** this fork adds an opt-in document translation callback and a long-identifier line-wrap fix. See [the hook contract](docs/whole-document-hook.md) and the [Zotero whole-document worker](https://github.com/sitonwall/zotero-pdf2zh/tree/whole-document). These additions are not endorsed or merged by upstream. Original upstream documentation follows.
+
 <div align="center">
 
 <br/>

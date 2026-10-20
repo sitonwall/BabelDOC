@@ -833,6 +833,38 @@ def check_cid_char(il: il_version_1.Document):
     return cid_count > len(chars) * 0.8
 
 
+def _translate_document(
+    docs: il_version_1.Document,
+    translation_config: TranslationConfig,
+) -> None:
+    """Translate the prepared IR through one explicit callback or the legacy path."""
+    if translation_config.document_translator is not None:
+        translation_config.document_translator(docs, translation_config)
+        return
+    translate_engine = translation_config.translator
+    term_extraction_engine = translation_config.get_term_extraction_translator()
+
+    support_llm_translate = translator_supports_llm(translate_engine)
+    support_llm_term_extraction = translator_supports_llm(term_extraction_engine)
+
+    if support_llm_term_extraction and translation_config.auto_extract_glossary:
+        AutomaticTermExtractor(term_extraction_engine, translation_config).procress(
+            docs
+        )
+
+    if not translation_config.skip_translation:
+        if support_llm_translate:
+            il_translator = ILTranslatorLLMOnly(translate_engine, translation_config)
+        else:
+            il_translator = ILTranslator(translate_engine, translation_config)
+
+        il_translator.translate(docs)
+        del il_translator
+        logger.debug("finish ILTranslator")
+    else:
+        logger.info("skip ILTranslator")
+
+
 def _do_translate_single(
     pm: ProgressMonitor,
     translation_config: TranslationConfig,
@@ -983,28 +1015,7 @@ def _do_translate_single(
             translation_config.get_working_file_path("styles_and_formulas.json"),
         )
 
-    translate_engine = translation_config.translator
-    term_extraction_engine = translation_config.get_term_extraction_translator()
-
-    support_llm_translate = translator_supports_llm(translate_engine)
-    support_llm_term_extraction = translator_supports_llm(term_extraction_engine)
-
-    if support_llm_term_extraction and translation_config.auto_extract_glossary:
-        AutomaticTermExtractor(term_extraction_engine, translation_config).procress(
-            docs
-        )
-
-    if not translation_config.skip_translation:
-        if support_llm_translate:
-            il_translator = ILTranslatorLLMOnly(translate_engine, translation_config)
-        else:
-            il_translator = ILTranslator(translate_engine, translation_config)
-
-        il_translator.translate(docs)
-        del il_translator
-        logger.debug(f"finish ILTranslator from {temp_pdf_path}")
-    else:
-        logger.info("skip ILTranslator")
+    _translate_document(docs, translation_config)
 
     if translation_config.debug:
         xml_converter.write_json(
