@@ -2,6 +2,7 @@
 
 import unittest
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pymupdf
 from babeldoc.format.pdf.document_il import Box
@@ -31,17 +32,23 @@ class LineBreakTest(unittest.TestCase):
             for char in text
         ]
         paragraph = PdfParagraph(box=Box(0, 0, 100, 1000))
-        laid_out, fits = engine._layout_typesetting_units(
-            units,
-            paragraph.box,
-            1,
-            1.3,
-            paragraph,
-        )
+        with patch.object(
+            engine,
+            "_get_width_before_next_break_point",
+            wraps=engine._get_width_before_next_break_point,
+        ) as lookahead:
+            laid_out, fits = engine._layout_typesetting_units(
+                units,
+                paragraph.box,
+                1,
+                1.3,
+                paragraph,
+            )
+        self.assertLessEqual(lookahead.call_count, 6)
         self.assertTrue(fits)
         self.assertEqual(
-            "".join(str(unit) for unit in laid_out).replace(" ", ""),
-            text.replace(" ", ""),
+            "".join(str(unit) for unit in laid_out),
+            text,
         )
         rows = {round(unit.box.y, 3) for unit in laid_out}
         self.assertLessEqual(len(rows), 6)
