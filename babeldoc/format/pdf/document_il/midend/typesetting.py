@@ -1408,7 +1408,12 @@ class Typesetting:
                 (current_x + unit_width > box.x2)
                 or (
                     use_english_line_break
-                    and current_x + unit_width + width_before_next_break_point > box.x2
+                    # Move a fitting word only before its first character. Long
+                    # identifiers must wrap by character instead of repeatedly
+                    # moving the remaining suffix onto a new line.
+                    and (i == 0 or typesetting_units[i - 1].can_break_line)
+                    and width_before_next_break_point <= box.x2 - box.x
+                    and current_x + width_before_next_break_point > box.x2
                 )
                 or (
                     unit.is_cannot_appear_in_line_end_punctuation
